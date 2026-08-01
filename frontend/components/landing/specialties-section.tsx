@@ -1,9 +1,15 @@
 import Link from "next/link";
 
-import { specialties } from "@/data/specialties";
+import { apiClient } from "@/lib/api-client";
 import { getSpecialtyIcon } from "@/lib/icon-map";
+import type { Specialty } from "@/types/doctor";
 
-export function SpecialtiesSection() {
+export async function SpecialtiesSection() {
+  const specialties = await apiClient
+    .get<{ data: Specialty[] }>("/specialties", { skipAuth: true, cache: "no-store" })
+    .then((res) => res.data)
+    .catch(() => [] as Specialty[]);
+
   return (
     <section id="services" className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
       <div className="mx-auto max-w-2xl text-center">

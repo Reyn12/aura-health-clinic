@@ -1,16 +1,18 @@
-"use client";
-
 import Image from "next/image";
 import Link from "next/link";
 import { Star } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
-import { useAppData } from "@/context/app-data-context";
+import { apiClient } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
+import type { Doctor } from "@/types/doctor";
 
-export function DoctorsSection() {
-  const { doctors } = useAppData();
+export async function DoctorsSection() {
+  const doctors = await apiClient
+    .get<{ data: Doctor[] }>("/doctors", { skipAuth: true, cache: "no-store" })
+    .then((res) => res.data)
+    .catch(() => [] as Doctor[]);
   const featured = doctors.slice(0, 3);
 
   return (

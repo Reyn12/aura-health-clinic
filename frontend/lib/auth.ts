@@ -1,9 +1,15 @@
-import type { AdminUser } from "@/data/admin-users";
+import { clearToken, setToken as setApiToken, TOKEN_COOKIE } from "@/lib/api-client";
 
-export const ADMIN_SESSION_COOKIE = "aura_admin_session";
+export const ADMIN_SESSION_COOKIE = TOKEN_COOKIE;
 const ADMIN_USER_STORAGE_KEY = "aura_admin_user";
 
-export type SessionUser = Omit<AdminUser, "password">;
+export interface SessionUser {
+  id: string;
+  name: string;
+  email: string;
+  phone: string | null;
+  role: "admin" | "staff" | "patient";
+}
 
 let currentUser: SessionUser | null = null;
 let isHydrated = false;
@@ -35,27 +41,28 @@ export function subscribeToSession(listener: () => void) {
 }
 
 /**
- * Client-side mock session. There's no real backend yet (see TODO-BACKEND.md),
- * so we set a plain (non-httpOnly) cookie that `proxy.ts` can read to gate
- * `/dashboard/*`, plus the user's display info in localStorage.
+ * Persists the Sanctum token (as the `aura_token` cookie `proxy.ts` gates
+ * `/dashboard/*` on) plus the display user, after a real `/auth/*login` call.
  */
-export function setSession(user: AdminUser) {
-  if (typeof document === "undefined") return;
-  document.cookie = `${ADMIN_SESSION_COOKIE}=1; path=/; max-age=${60 * 60 * 8}`;
+export function setSession(token: string, user: SessionUser) {
+  setApiToken(token);
 
-  currentUser = { name: user.name, email: user.email, role: user.role };
+  currentUser = user;
   isHydrated = true;
-  window.localStorage.setItem(ADMIN_USER_STORAGE_KEY, JSON.stringify(currentUser));
+  if (typeof window !== "undefined") {
+    window.localStorage.setItem(ADMIN_USER_STORAGE_KEY, JSON.stringify(currentUser));
+  }
   notify();
 }
 
 export function clearSession() {
-  if (typeof document === "undefined") return;
-  document.cookie = `${ADMIN_SESSION_COOKIE}=; path=/; max-age=0`;
+  clearToken();
 
   currentUser = null;
   isHydrated = true;
-  window.localStorage.removeItem(ADMIN_USER_STORAGE_KEY);
+  if (typeof window !== "undefined") {
+    window.localStorage.removeItem(ADMIN_USER_STORAGE_KEY);
+  }
   notify();
 }
 

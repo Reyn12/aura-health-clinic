@@ -1,15 +1,16 @@
 "use client";
 
 import { Card } from "@/components/ui/card";
-import { specialties } from "@/data/specialties";
 import { getSpecialtyIcon } from "@/lib/icon-map";
 import { cn } from "@/lib/utils";
 import type { Specialty } from "@/types/doctor";
 
 export function SpecialtyStep({
+  specialties,
   selected,
   onSelect,
 }: {
+  specialties: Specialty[];
   selected: Specialty | null;
   onSelect: (specialty: Specialty) => void;
 }) {

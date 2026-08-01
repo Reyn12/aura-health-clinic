@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { CalendarDays, LayoutDashboard, LogOut, Stethoscope, Users } from "lucide-react";
+import { CalendarDays, LayoutDashboard, Loader2, LogOut, Stethoscope, Users } from "lucide-react";
 
 import { useAdminAuth } from "@/hooks/use-admin-auth";
 import { siteConfig } from "@/data/site";
@@ -19,7 +19,7 @@ const navItems = [
 export function DashboardSidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { currentUser, logout } = useAdminAuth();
+  const { currentUser, logout, isLoggingOut } = useAdminAuth();
 
   function handleLogout() {
     logout();
@@ -74,9 +74,10 @@ export function DashboardSidebar() {
         <button
           type="button"
           onClick={handleLogout}
-          className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+          disabled={isLoggingOut}
+          className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-60"
         >
-          <LogOut className="size-4" />
+          {isLoggingOut ? <Loader2 className="size-4 animate-spin" /> : <LogOut className="size-4" />}
           Logout
         </button>
       </div>

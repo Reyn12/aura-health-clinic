@@ -1,14 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { gooeyToast } from "goey-toast";
 
 import { Button } from "@/components/ui/button";
 import { useBookingFlow } from "@/hooks/use-booking-flow";
-import { useAppData } from "@/context/app-data-context";
-import { specialties } from "@/data/specialties";
+import { useSpecialties } from "@/hooks/use-specialties";
+import { useDoctors } from "@/hooks/use-doctors";
+import { useCreateAppointment } from "@/hooks/use-appointments";
+import { ApiError } from "@/lib/api-client";
 import { StepIndicator } from "@/components/booking/step-indicator";
 import { SpecialtyStep } from "@/components/booking/specialty-step";
 import { DoctorStep } from "@/components/booking/doctor-step";
@@ -19,7 +21,9 @@ import { BookingSummary } from "@/components/booking/booking-summary";
 export function BookingWizard() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { doctors, addAppointment } = useAppData();
+  const { data: specialties = [], isLoading: isLoadingSpecialties } = useSpecialties();
+  const { data: doctors = [], isLoading: isLoadingDoctors } = useDoctors();
+  const createAppointment = useCreateAppointment();
   const {
     state,
     step,
@@ -34,9 +38,10 @@ export function BookingWizard() {
     prevStep,
     reset,
   } = useBookingFlow();
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
+    if (specialties.length === 0 && doctors.length === 0) return;
+
     const specialtySlug = searchParams.get("specialty");
     const doctorId = searchParams.get("doctor");
 
@@ -49,38 +54,39 @@ export function BookingWizard() {
     if (preselectedDoctor) {
       selectDoctor(preselectedDoctor);
     }
-    // Only run once on mount to read the initial query params.
+    // Only run once the reference data has loaded, to read the initial query params.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [specialties.length, doctors.length]);
 
   function handleConfirm() {
     if (!isComplete || !state.doctor || !state.date || !state.time) return;
-    setIsSubmitting(true);
 
-    // Backend isn't ready yet (see TODO-BACKEND.md) - persist to the shared mock
-    // store so the admin dashboard can see it, and simulate request latency.
     const doctor = state.doctor;
-    setTimeout(() => {
-      addAppointment({
+    createAppointment.mutate(
+      {
+        doctorId: doctor.id,
+        date: state.date as string,
+        time: state.time as string,
+        notes: state.patient.notes,
         patientName: state.patient.fullName,
         patientPhone: state.patient.phone,
         patientEmail: state.patient.email,
-        patientNotes: state.patient.notes,
-        doctorId: doctor.id,
-        doctorName: doctor.name,
-        doctorPhotoUrl: doctor.photoUrl,
-        specialtyName: doctor.specialtyName,
-        date: state.date as string,
-        time: state.time as string,
-        consultationFee: doctor.consultationFee,
-      });
-      setIsSubmitting(false);
-      gooeyToast.success("Appointment requested!", {
-        description: `We'll confirm your visit with ${doctor.name} shortly.`,
-      });
-      reset();
-      router.push("/");
-    }, 900);
+      },
+      {
+        onSuccess: () => {
+          gooeyToast.success("Appointment requested!", {
+            description: `We'll confirm your visit with ${doctor.name} shortly.`,
+          });
+          reset();
+          router.push("/");
+        },
+        onError: (error) => {
+          const message =
+            error instanceof ApiError ? error.message : "Something went wrong. Please try again.";
+          gooeyToast.error("Couldn't book appointment", { description: message });
+        },
+      }
+    );
   }
 
   return (
@@ -98,10 +104,26 @@ export function BookingWizard() {
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_360px]">
         <div className="rounded-2xl border border-border bg-card p-6">
-          {step === "specialty" && (
-            <SpecialtyStep selected={state.specialty} onSelect={selectSpecialty} />
+          {step === "specialty" && isLoadingSpecialties && (
+            <div className="flex items-center justify-center gap-2 p-10 text-sm text-muted-foreground">
+              <Loader2 className="size-4 animate-spin" />
+              Loading specialties...
+            </div>
           )}
-          {step === "doctor" && (
+          {step === "specialty" && !isLoadingSpecialties && (
+            <SpecialtyStep
+              specialties={specialties}
+              selected={state.specialty}
+              onSelect={selectSpecialty}
+            />
+          )}
+          {step === "doctor" && isLoadingDoctors && (
+            <div className="flex items-center justify-center gap-2 p-10 text-sm text-muted-foreground">
+              <Loader2 className="size-4 animate-spin" />
+              Loading doctors...
+            </div>
+          )}
+          {step === "doctor" && !isLoadingDoctors && (
             <DoctorStep
               specialty={state.specialty}
               doctors={doctors}
@@ -144,7 +166,7 @@ export function BookingWizard() {
           <BookingSummary
             state={state}
             isComplete={isComplete}
-            isSubmitting={isSubmitting}
+            isSubmitting={createAppointment.isPending}
             onConfirm={handleConfirm}
           />
         </div>

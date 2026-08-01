@@ -12,32 +12,26 @@ import { useAdminAuth } from "@/hooks/use-admin-auth";
 export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { login } = useAdminAuth();
+  const { login, isLoggingIn } = useAdminAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  function handleSubmit(event: FormEvent) {
+  async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     setError(null);
-    setIsSubmitting(true);
 
-    // Simulate request latency - swap for a real API call once auth exists.
-    setTimeout(() => {
-      const result = login(email, password);
-      setIsSubmitting(false);
+    const result = await login(email, password);
 
-      if (!result.success) {
-        setError(result.error);
-        return;
-      }
+    if (!result.success) {
+      setError(result.error);
+      return;
+    }
 
-      const redirectTo = searchParams.get("from") ?? "/dashboard";
-      router.push(redirectTo);
-      router.refresh();
-    }, 500);
+    const redirectTo = searchParams.get("from") ?? "/dashboard";
+    router.push(redirectTo);
+    router.refresh();
   }
 
   return (
@@ -72,9 +66,9 @@ export function LoginForm() {
         </p>
       )}
 
-      <Button type="submit" className="h-11 w-full gap-2" disabled={isSubmitting}>
-        {isSubmitting ? <Loader2 className="size-4 animate-spin" /> : <LockKeyhole className="size-4" />}
-        {isSubmitting ? "Signing in..." : "Sign In"}
+      <Button type="submit" className="h-11 w-full gap-2" disabled={isLoggingIn}>
+        {isLoggingIn ? <Loader2 className="size-4 animate-spin" /> : <LockKeyhole className="size-4" />}
+        {isLoggingIn ? "Signing in..." : "Sign In"}
       </Button>
 
       <div className="rounded-lg bg-muted p-3 text-xs text-muted-foreground">

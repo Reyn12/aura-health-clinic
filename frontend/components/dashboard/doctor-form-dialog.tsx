@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -21,12 +22,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { specialties } from "@/data/specialties";
-import type { Doctor, SpecialtySlug } from "@/types/doctor";
+import { useSpecialties } from "@/hooks/use-specialties";
+import type { Doctor, Specialty, SpecialtySlug } from "@/types/doctor";
 
 interface DoctorFormValues {
   name: string;
-  specialtySlug: SpecialtySlug;
+  specialtySlug: SpecialtySlug | "";
   photoUrl: string;
   experienceYears: string;
   consultationFee: string;
@@ -35,16 +36,18 @@ interface DoctorFormValues {
   bio: string;
 }
 
-const emptyForm: DoctorFormValues = {
-  name: "",
-  specialtySlug: specialties[0].slug,
-  photoUrl: "",
-  experienceYears: "",
-  consultationFee: "",
-  scheduleDay: "Mon - Fri",
-  scheduleHours: "09:00 - 17:00",
-  bio: "",
-};
+function buildEmptyForm(specialties: Specialty[]): DoctorFormValues {
+  return {
+    name: "",
+    specialtySlug: specialties[0]?.slug ?? "",
+    photoUrl: "",
+    experienceYears: "",
+    consultationFee: "",
+    scheduleDay: "Mon - Fri",
+    scheduleHours: "09:00 - 17:00",
+    bio: "",
+  };
+}
 
 function doctorToForm(doctor: Doctor): DoctorFormValues {
   return {
@@ -63,11 +66,13 @@ export function DoctorFormDialog({
   open,
   onOpenChange,
   doctor,
+  isSubmitting = false,
   onSubmit,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   doctor?: Doctor;
+  isSubmitting?: boolean;
   onSubmit: (values: Omit<Doctor, "id" | "rating" | "reviewCount">) => void;
 }) {
   return (
@@ -79,10 +84,8 @@ export function DoctorFormDialog({
           <DoctorFormFields
             key={doctor?.id ?? "new"}
             doctor={doctor}
-            onSubmit={(values) => {
-              onSubmit(values);
-              onOpenChange(false);
-            }}
+            isSubmitting={isSubmitting}
+            onSubmit={onSubmit}
             onCancel={() => onOpenChange(false)}
           />
         )}
@@ -93,19 +96,26 @@ export function DoctorFormDialog({
 
 function DoctorFormFields({
   doctor,
+  isSubmitting,
   onSubmit,
   onCancel,
 }: {
   doctor?: Doctor;
+  isSubmitting: boolean;
   onSubmit: (values: Omit<Doctor, "id" | "rating" | "reviewCount">) => void;
   onCancel: () => void;
 }) {
-  const [form, setForm] = useState<DoctorFormValues>(doctor ? doctorToForm(doctor) : emptyForm);
+  const { data: specialties = [] } = useSpecialties();
+  const [form, setForm] = useState<DoctorFormValues>(
+    doctor ? doctorToForm(doctor) : buildEmptyForm(specialties)
+  );
   const isEditing = Boolean(doctor);
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault();
-    const specialty = specialties.find((item) => item.slug === form.specialtySlug) ?? specialties[0];
+    const specialty =
+      specialties.find((item) => item.slug === form.specialtySlug) ?? specialties[0];
+    if (!specialty) return;
 
     onSubmit({
       name: form.name.trim(),
@@ -241,10 +251,13 @@ function DoctorFormFields({
       </div>
 
       <DialogFooter>
-        <Button type="button" variant="outline" onClick={onCancel}>
+        <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>
           Cancel
         </Button>
-        <Button type="submit">{isEditing ? "Save Changes" : "Add Doctor"}</Button>
+        <Button type="submit" disabled={isSubmitting} className="gap-2">
+          {isSubmitting && <Loader2 className="size-4 animate-spin" />}
+          {isEditing ? "Save Changes" : "Add Doctor"}
+        </Button>
       </DialogFooter>
     </form>
   );

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { Check, Eye, StickyNote, X } from "lucide-react";
+import { Check, Eye, Loader2, StickyNote, X } from "lucide-react";
 
 import {
   Table,
@@ -28,11 +28,14 @@ function formatDate(iso: string) {
 export function AppointmentsTable({
   appointments,
   onUpdateStatus,
+  updatingId = null,
   showDate = true,
   emptyMessage = "No appointments found.",
 }: {
   appointments: Appointment[];
   onUpdateStatus: (id: string, status: AppointmentStatus) => void;
+  /** Id of the appointment currently being updated, to show a per-row spinner. */
+  updatingId?: string | null;
   showDate?: boolean;
   emptyMessage?: string;
 }) {
@@ -60,7 +63,10 @@ export function AppointmentsTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {appointments.map((appointment) => (
+          {appointments.map((appointment) => {
+            const isUpdatingThis = updatingId === appointment.id;
+
+            return (
             <TableRow key={appointment.id}>
               <TableCell>
                 <div className="flex items-start gap-1.5">
@@ -113,15 +119,21 @@ export function AppointmentsTable({
                         variant="outline"
                         className="border-emerald-200 text-emerald-600 hover:bg-emerald-50"
                         onClick={() => onUpdateStatus(appointment.id, "confirmed")}
+                        disabled={isUpdatingThis}
                         aria-label="Confirm appointment"
                       >
-                        <Check className="size-4" />
+                        {isUpdatingThis ? (
+                          <Loader2 className="size-4 animate-spin" />
+                        ) : (
+                          <Check className="size-4" />
+                        )}
                       </Button>
                       <Button
                         size="icon-sm"
                         variant="outline"
                         className="border-red-200 text-red-600 hover:bg-red-50"
                         onClick={() => onUpdateStatus(appointment.id, "cancelled")}
+                        disabled={isUpdatingThis}
                         aria-label="Cancel appointment"
                       >
                         <X className="size-4" />
@@ -135,15 +147,21 @@ export function AppointmentsTable({
                         variant="outline"
                         className="border-emerald-200 text-emerald-600 hover:bg-emerald-50"
                         onClick={() => onUpdateStatus(appointment.id, "completed")}
+                        disabled={isUpdatingThis}
                         aria-label="Mark as completed"
                       >
-                        <Check className="size-4" />
+                        {isUpdatingThis ? (
+                          <Loader2 className="size-4 animate-spin" />
+                        ) : (
+                          <Check className="size-4" />
+                        )}
                       </Button>
                       <Button
                         size="icon-sm"
                         variant="outline"
                         className="border-red-200 text-red-600 hover:bg-red-50"
                         onClick={() => onUpdateStatus(appointment.id, "cancelled")}
+                        disabled={isUpdatingThis}
                         aria-label="Cancel appointment"
                       >
                         <X className="size-4" />
@@ -153,7 +171,8 @@ export function AppointmentsTable({
                 </div>
               </TableCell>
             </TableRow>
-          ))}
+            );
+          })}
         </TableBody>
       </Table>
 

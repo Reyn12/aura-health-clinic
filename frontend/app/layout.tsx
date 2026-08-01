@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "@/components/layout/toaster";
-import { AppDataProvider } from "@/context/app-data-context";
+import { QueryProvider } from "@/components/providers/query-provider";
 import "goey-toast/styles.css";
 import "./globals.css";
 
@@ -32,10 +32,10 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <AppDataProvider>
+        <QueryProvider>
           {children}
           <Toaster />
-        </AppDataProvider>
+        </QueryProvider>
       </body>
     </html>
   );

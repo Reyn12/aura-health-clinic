@@ -1,6 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
+import { Loader2 } from "lucide-react";
+import { gooeyToast } from "goey-toast";
 
 import {
   Select,
@@ -10,7 +12,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { AppointmentsTable } from "@/components/dashboard/appointments-table";
-import { useAppData } from "@/context/app-data-context";
+import { useAdminAppointments, useUpdateAppointmentStatus } from "@/hooks/use-appointments";
+import { ApiError } from "@/lib/api-client";
 import { APPOINTMENT_STATUSES, type AppointmentStatus } from "@/types/appointment";
 
 const statusLabels: Record<AppointmentStatus, string> = {
@@ -21,20 +24,21 @@ const statusLabels: Record<AppointmentStatus, string> = {
 };
 
 export default function DashboardAppointmentsPage() {
-  const { appointments, updateAppointmentStatus } = useAppData();
   const [statusFilter, setStatusFilter] = useState<AppointmentStatus | "all">("all");
+  const { data: appointments = [], isLoading } = useAdminAppointments({ status: statusFilter });
+  const updateStatus = useUpdateAppointmentStatus();
 
-  const filteredAppointments = useMemo(() => {
-    const filtered =
-      statusFilter === "all"
-        ? appointments
-        : appointments.filter((appointment) => appointment.status === statusFilter);
-
-    return [...filtered].sort((a, b) => {
-      if (a.date === b.date) return a.time.localeCompare(b.time);
-      return a.date < b.date ? 1 : -1;
-    });
-  }, [appointments, statusFilter]);
+  function handleUpdateStatus(id: string, status: AppointmentStatus) {
+    updateStatus.mutate(
+      { id, status },
+      {
+        onError: (error) => {
+          const message = error instanceof ApiError ? error.message : "Something went wrong.";
+          gooeyToast.error("Couldn't update appointment", { description: message });
+        },
+      }
+    );
+  }
 
   return (
     <div>
@@ -62,11 +66,19 @@ export default function DashboardAppointmentsPage() {
       </div>
 
       <div className="rounded-2xl border border-border bg-card p-5">
-        <AppointmentsTable
-          appointments={filteredAppointments}
-          onUpdateStatus={updateAppointmentStatus}
-          emptyMessage="No appointments match this filter."
-        />
+        {isLoading ? (
+          <div className="flex items-center justify-center gap-2 p-8 text-sm text-muted-foreground">
+            <Loader2 className="size-4 animate-spin" />
+            Loading appointments...
+          </div>
+        ) : (
+          <AppointmentsTable
+            appointments={appointments}
+            onUpdateStatus={handleUpdateStatus}
+            updatingId={updateStatus.isPending ? updateStatus.variables?.id ?? null : null}
+            emptyMessage="No appointments match this filter."
+          />
+        )}
       </div>
     </div>
   );

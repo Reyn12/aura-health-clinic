@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Search } from "lucide-react";
+import { useState } from "react";
+import { Loader2, Search } from "lucide-react";
+import { gooeyToast } from "goey-toast";
 
 import { Input } from "@/components/ui/input";
 import {
@@ -20,8 +21,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { AppointmentsTable } from "@/components/dashboard/appointments-table";
-import { useAppData } from "@/context/app-data-context";
-import { getPatientsFromAppointments, type PatientSummary } from "@/lib/patients";
+import { useAdminPatients } from "@/hooks/use-admin-patients";
+import { useUpdateAppointmentStatus } from "@/hooks/use-appointments";
+import { ApiError } from "@/lib/api-client";
+import type { PatientSummary } from "@/lib/patients";
+import type { AppointmentStatus } from "@/types/appointment";
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-US", {
@@ -32,22 +36,22 @@ function formatDate(iso: string) {
 }
 
 export default function DashboardPatientsPage() {
-  const { appointments, updateAppointmentStatus } = useAppData();
   const [search, setSearch] = useState("");
+  const { data: patients = [], isLoading } = useAdminPatients(search);
+  const updateStatus = useUpdateAppointmentStatus();
   const [selectedPatient, setSelectedPatient] = useState<PatientSummary | null>(null);
 
-  const patients = useMemo(() => getPatientsFromAppointments(appointments), [appointments]);
-
-  const filteredPatients = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    if (!query) return patients;
-    return patients.filter(
-      (patient) =>
-        patient.name.toLowerCase().includes(query) ||
-        patient.email.toLowerCase().includes(query) ||
-        patient.phone.toLowerCase().includes(query)
+  function handleUpdateStatus(id: string, status: AppointmentStatus) {
+    updateStatus.mutate(
+      { id, status },
+      {
+        onError: (error) => {
+          const message = error instanceof ApiError ? error.message : "Something went wrong.";
+          gooeyToast.error("Couldn't update appointment", { description: message });
+        },
+      }
     );
-  }, [patients, search]);
+  }
 
   return (
     <div>
@@ -71,7 +75,12 @@ export default function DashboardPatientsPage() {
       </div>
 
       <div className="rounded-2xl border border-border bg-card p-5">
-        {filteredPatients.length === 0 ? (
+        {isLoading ? (
+          <div className="flex items-center justify-center gap-2 p-8 text-sm text-muted-foreground">
+            <Loader2 className="size-4 animate-spin" />
+            Loading patients...
+          </div>
+        ) : patients.length === 0 ? (
           <p className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
             No patients found.
           </p>
@@ -87,7 +96,7 @@ export default function DashboardPatientsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredPatients.map((patient) => (
+              {patients.map((patient) => (
                 <TableRow
                   key={patient.email}
                   className="cursor-pointer"
@@ -116,7 +125,8 @@ export default function DashboardPatientsPage() {
           {selectedPatient && (
             <AppointmentsTable
               appointments={selectedPatient.appointments}
-              onUpdateStatus={updateAppointmentStatus}
+              onUpdateStatus={handleUpdateStatus}
+              updatingId={updateStatus.isPending ? updateStatus.variables?.id ?? null : null}
             />
           )}
         </DialogContent>
