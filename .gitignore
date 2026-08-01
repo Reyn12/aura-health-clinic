@@ -1,0 +1,9 @@
+# Planning doc - not meant to be committed
+TODO-BACKEND.md
+
+# OS
+.DS_Store
+
+# Env files (in case placed at repo root)
+.env
+.env.local
