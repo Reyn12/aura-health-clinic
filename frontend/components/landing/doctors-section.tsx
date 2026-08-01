@@ -1,13 +1,16 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
 import { Star } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
-import { doctors } from "@/data/doctors";
+import { useAppData } from "@/context/app-data-context";
 import { cn } from "@/lib/utils";
 
 export function DoctorsSection() {
+  const { doctors } = useAppData();
   const featured = doctors.slice(0, 3);
 
   return (

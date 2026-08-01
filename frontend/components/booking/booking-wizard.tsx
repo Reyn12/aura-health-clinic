@@ -7,7 +7,7 @@ import { gooeyToast } from "goey-toast";
 
 import { Button } from "@/components/ui/button";
 import { useBookingFlow } from "@/hooks/use-booking-flow";
-import { doctors } from "@/data/doctors";
+import { useAppData } from "@/context/app-data-context";
 import { specialties } from "@/data/specialties";
 import { StepIndicator } from "@/components/booking/step-indicator";
 import { SpecialtyStep } from "@/components/booking/specialty-step";
@@ -19,6 +19,7 @@ import { BookingSummary } from "@/components/booking/booking-summary";
 export function BookingWizard() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { doctors, addAppointment } = useAppData();
   const {
     state,
     step,
@@ -53,14 +54,29 @@ export function BookingWizard() {
   }, []);
 
   function handleConfirm() {
-    if (!isComplete) return;
+    if (!isComplete || !state.doctor || !state.date || !state.time) return;
     setIsSubmitting(true);
 
-    // Backend isn't ready yet (see TODO-BACKEND.md) - simulate the request for now.
+    // Backend isn't ready yet (see TODO-BACKEND.md) - persist to the shared mock
+    // store so the admin dashboard can see it, and simulate request latency.
+    const doctor = state.doctor;
     setTimeout(() => {
+      addAppointment({
+        patientName: state.patient.fullName,
+        patientPhone: state.patient.phone,
+        patientEmail: state.patient.email,
+        patientNotes: state.patient.notes,
+        doctorId: doctor.id,
+        doctorName: doctor.name,
+        doctorPhotoUrl: doctor.photoUrl,
+        specialtyName: doctor.specialtyName,
+        date: state.date as string,
+        time: state.time as string,
+        consultationFee: doctor.consultationFee,
+      });
       setIsSubmitting(false);
       gooeyToast.success("Appointment requested!", {
-        description: `We'll confirm your visit with ${state.doctor?.name} shortly.`,
+        description: `We'll confirm your visit with ${doctor.name} shortly.`,
       });
       reset();
       router.push("/");
@@ -88,6 +104,7 @@ export function BookingWizard() {
           {step === "doctor" && (
             <DoctorStep
               specialty={state.specialty}
+              doctors={doctors}
               selected={state.doctor}
               onSelect={selectDoctor}
             />

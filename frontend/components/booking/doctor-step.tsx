@@ -4,20 +4,23 @@ import Image from "next/image";
 import { Star } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
-import { getDoctorsBySpecialty } from "@/data/doctors";
 import { cn } from "@/lib/utils";
 import type { Doctor, Specialty } from "@/types/doctor";
 
 export function DoctorStep({
   specialty,
+  doctors,
   selected,
   onSelect,
 }: {
   specialty: Specialty | null;
+  doctors: Doctor[];
   selected: Doctor | null;
   onSelect: (doctor: Doctor) => void;
 }) {
-  const availableDoctors = specialty ? getDoctorsBySpecialty(specialty.slug) : [];
+  const availableDoctors = specialty
+    ? doctors.filter((doctor) => doctor.specialtySlug === specialty.slug)
+    : [];
 
   return (
     <div>
